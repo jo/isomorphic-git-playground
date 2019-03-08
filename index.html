@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<script src=https://unpkg.com/@isomorphic-git/lightning-fs></script>
+<script src=https://isomorphic-git.org/js/pify.js></script>
+<script src=https://unpkg.com/isomorphic-git></script>
+<p>Number of commits: <code id=commit-count>cloning...</code></p>
+<p id=notice hidden>There are seven commits in the <a href=https://github.com/jo/testrepo>test repository</a>. Please reload window. Does the number decrease?</p>
+<h4><code id=ref-content></code> <span id=commit-message></span></h4>
+<pre id=file-content></pre>
+<script>
+  window.fs = new LightningFS('fs')
+  git.plugins.set('fs', window.fs)
+  
+  const pfs = pify(window.fs)
+  const dir = '/testrepo'
+  const filename = `${dir}/file-one`
+  
+  const commitCountElement = document.getElementById('commit-count')
+  const refContentElement = document.getElementById('ref-content')
+  const commitMessageElement = document.getElementById('commit-message')
+  const fileContentElement = document.getElementById('file-content')
+  const noticeElement = document.getElementById('notice')
+
+  const init = async () => {
+    try {
+      await pfs.mkdir(dir);
+      await git.clone({
+        dir,
+        corsProxy: 'https://cors.isomorphic-git.org',
+        url: 'https://github.com/jo/testrepo',
+        ref: 'master'
+      });
+    } catch (e) {
+      if (e.code === 'EEXIST') console.log('repo exists')
+      else throw (e)
+    }
+
+    const logs = await git.log({dir})
+    commitCountElement.innerText = logs.length
+
+    noticeElement.removeAttribute('hidden')
+
+    logs.reverse()
+    i = 0
+    const checkoutNext = async () => {
+      if (i > logs.length - 1) i = 0
+      log = logs[i]
+      i++
+      const ref = log.oid
+      refContentElement.innerText = ref
+      commitMessageElement.innerText = log.message
+      await git.checkout({
+        dir,
+        ref
+      })
+      const text = await pfs.readFile(filename, 'utf8')
+      fileContentElement.innerText = text
+      setTimeout(checkoutNext, 200)
+    }
+
+    checkoutNext()
+  }
+
+  init()
+</script>
