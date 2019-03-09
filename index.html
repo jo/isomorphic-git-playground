@@ -35,6 +35,15 @@
       else throw (e)
     }
 
+    try {
+      await git.checkout({
+        dir,
+        ref: 'master'
+      })
+    } catch (e) {
+      console.log(e)
+    }
+
     const logs = await git.log({dir})
     commitCountElement.innerText = logs.length
 
